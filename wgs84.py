@@ -40,17 +40,17 @@ def geodetic_point_in_ecef(lat_gd, lon, h):
 	"""
 
 	# convert units
-	if lat_gd.unit.is_equivalent(u.radian) not True:
+	if not lat_gd.unit.is_equivalent(u.radian):
 		lat_gd = lat_gd.to(u.radian)
-	if lon.unit.is_equivalent(u.radian) not True:
+	if not lon.unit.is_equivalent(u.radian):
 		lon = lon.to(u.radian)
-	if h.unit.is_equivalent(u.meter) not True:
+	if not h.unit.is_equivalent(u.meter):
 		h = h.to(u.meter)
 
-	R_N = R_N(lat_gd)
-	x   = (R_N + h) * cos(lat_gd) * cos(lon)
-	y   = (R_N + h) * cos(lat_gd) * sin(lon)
-	z   = (R_N*(1 - E_ECC_SQ) + h)* sin(lat_gd)
+	r_n = R_N(lat_gd)
+	x   = (r_n + h) * cos(lat_gd) * cos(lon)
+	y   = (r_n + h) * cos(lat_gd) * sin(lon)
+	z   = (r_n*(1 - E_ECC_SQ) + h)* sin(lat_gd)
 
 	r_ecef = np.array([x, y, z]) * u.meter
 
