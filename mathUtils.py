@@ -32,5 +32,6 @@ class mathUtils:
             if not quantity.unit.is_equivalent(unit):
                 corrected_unit = quantity.to(unit)
                 return corrected_unit
+            return quantity
         except Exception as e:
             raise

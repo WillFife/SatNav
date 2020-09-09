@@ -50,9 +50,9 @@ class WGS84:
 		Inputs:
 			Astropy Quantity lat_gd : Geodetic latitude
 			Astropy Quantity lon    : Latitude
-			Astropy Quantity h      : Height
+			Astropy Quantity h      : Height above reference ellipsoid
 		Returns:
-			Astropy Quantity r_ecef (meter) : 1x3 array for ECEF position
+			Astropy Quantity r_ecef (m) : 3x1 array for ECEF position
 		"""
 
 		# check units
@@ -65,17 +65,37 @@ class WGS84:
 		y   = (r_n + h) * cos(lat_gd) * sin(lon)
 		z   = (r_n*(1 - E_ECC_SQ) + h)* sin(lat_gd)
 
-		r_ecef = np.array([x, y, z]) * u.meter
+		r_ecef = np.array([x, y, z]).reshape((3,1)) * u.meter
 
 		return r_ecef
 
 
 	def ecef_to_geodetic(self, r_ecef):
+		"""
+		Compute geodetic position from ECEF cartesian vector
+
+		Inputs:
+			Astropy Quantity r_ecef (m): 3x1 array ECEF position
+		Returns:
+			Astropy Quantity lat_gd : Geodetic latitude
+			Astropy Quantity lon    : Latitude
+			Astropy Quantity h      : Height above reference ellipsoid
+		"""
+
+		# check units
+		r_ecef = self.unit_checker(r_ecef, u.meter)
+
+
+	def ecef_to_enu(self, lat_gd, lon):
+		"""
+		Generate the rotation matrix used to express a vector in ECEF
+		as a vector in ENU at the position defined by geodetic
+		coordinates.
+
+		Inputs:
+			Astropy Quantity lat_gd: Geodetic latitude
+			Astropy Quantity lon: Longitude
+		Returns:
+			Astropy Quantity T_ecef_enu: 3x3 Rotation matrix from ECEF to ENU
+		"""
 		pass
-
-
-
-
-
-
-
