@@ -9,7 +9,7 @@ import astropy.units as u
 import numpy as np
 
 
-class mathUtils:
+class MathUtils:
     """
     Math utilities class.
     """
@@ -29,7 +29,7 @@ class mathUtils:
             Astropy Quantity: Quantity with correct unit
         """
         try:
-            if not quantity.unit.is_equivalent(unit):
+            if quantity.unit.is_equivalent(unit) == False:
                 corrected_unit = quantity.to(unit)
                 return corrected_unit
             return quantity

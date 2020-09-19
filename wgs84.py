@@ -10,23 +10,29 @@ import astropy.units as u
 import astropy.constants as const
 import numpy as np
 from numpy import sin, cos, sqrt
+import pandas as pd
 
 # import SatNav modules
-from mathUtils import mathUtils
+from mathUtils import MathUtils
 
 
-# Constants
-E_SMA      = 6378137.0 * u.meter                     # SMA for earth shape
-E_FLAT_INV = 298.257223563
-E_FLAT     = 1./E_FLAT_INV
-E_ROT_VEL  = 7292115e-11 * u.rad / u.second
-E_MU       = 398600441800000.0 * const.GM_earth.unit 
-E_ECC_SQ   = 2. * E_FLAT - E_FLAT**2
+class wgs84Constants():
+	def __init__(self):
+		# Constants
+		self.E_SMA      = 6378137.0 * u.meter                     # SMA for earth shape
+		self.E_FLAT_INV = 298.257223563
+		self.E_FLAT     = 1./self.E_FLAT_INV
+		self.E_ROT_VEL  = 7292115e-11 * u.rad / u.second
+		self.E_MU       = 398600441800000.0 * const.GM_earth.unit 
+		self.E_ECC_SQ   = 2. * self.E_FLAT - self.E_FLAT**2
 
 
-class WGS84:
-	self.mathUtils    = mathUtils()
-	self.unit_checker = self.mathUtils.check_units
+class WGS84():
+	def __init__(self):
+		self.MathUtils    = MathUtils()
+		self.unit_checker = self.MathUtils.check_units
+		self.consts       = wgs84Constants()
+
 
 	def R_N(self, lat_gd):
 		"""
@@ -37,9 +43,7 @@ class WGS84:
 		Returns:
 			Astropy Quantity meridian_roc : Meridian radius of curvature
 		"""
-		# check units
-		lgd          = self.unit_checker(lat_gd, u.radian)
-		meridian_roc = E_SMA/sqrt(1. - E_ECC_SQ*sin(lgd))
+		meridian_roc = self.consts.E_SMA/sqrt(1. - self.consts.E_ECC_SQ*sin(lat_gd))
 		return meridian_roc
 
 
@@ -54,18 +58,28 @@ class WGS84:
 		Returns:
 			Astropy Quantity r_ecef (m) : 3x1 array for ECEF position
 		"""
-
-		# check units
-		lat_gd = self.unit_checker(lat_gd, u.radian)
-		lon    = self.unit_checker(lon, u.radian)
-		h      = self.unit_checker(h, u.meter)
-
-		r_n = R_N(lat_gd)
+		r_n = self.R_N(lat_gd)
 		x   = (r_n + h) * cos(lat_gd) * cos(lon)
 		y   = (r_n + h) * cos(lat_gd) * sin(lon)
-		z   = (r_n*(1 - E_ECC_SQ) + h)* sin(lat_gd)
+		z   = (r_n*(1 - self.consts.E_ECC_SQ) + h)* sin(lat_gd)
 
-		r_ecef = np.array([x, y, z]).reshape((3,1)) * u.meter
+		r_ecef = u.Quantity([x, y, z], u.meter)
+
+		return r_ecef.reshape((3,1))
+
+	
+	def geodetic_point_in_ecef_arr(self, lat_gd, lons, hs):
+		"""
+		Compute ECEF positions from arrays of latitude, longitude, and heights.
+		"""
+		r_ecef = np.zeros((len(lat_gd), 3))
+
+		for ii in range(len(lat_gd)):
+			lat = lat_gd[ii]
+			lon = lons[ii]
+			h   = hs[ii]
+			r   = self.geodetic_point_in_ecef(lat, lon, h)
+			r_ecef[ii,:] = r.flatten()
 
 		return r_ecef
 
@@ -83,7 +97,39 @@ class WGS84:
 		"""
 
 		# check units
-		r_ecef = self.unit_checker(r_ecef, u.meter)
+		r_ecef = r_ecef.to(u.meter)
+		
+		# unpack and compute intermediate values
+		x     = r_ecef[0,0]
+		y     = r_ecef[1,0]
+		z     = r_ecef[2,0]
+		r_mag = np.linalg.norm(r_ecef)
+		rho   = np.sqrt(x**2 + y**2)
+		
+		# compute longitude
+		lon = np.arctan2(y, x)
+
+		# initial latitude and height guess
+		lat = np.arcsin(z/r_mag)
+		h   = rho/np.cos(lat) - self.R_N(lat)
+
+		# loop through to find latitude
+		max_iter = 100
+		i        = 0
+		tol      = 1e-7
+		while i < max_iter:
+			R_N     = self.R_N(lat)
+			numer   = z + R_N*self.consts.E_ECC_SQ*np.sin(lat)
+			new_lat = np.arctan2(numer, rho)
+			if abs(new_lat - lat) <= tol:
+				lat = new_lat
+				h   = R_N
+				return lat, lon, h
+			
+			lat = new_lat
+			i += 1
+		
+		return lat, lon, h
 
 
 	def ecef_to_enu(self, lat_gd, lon):
@@ -98,4 +144,19 @@ class WGS84:
 		Returns:
 			Astropy Quantity T_ecef_enu: 3x3 Rotation matrix from ECEF to ENU
 		"""
-		pass
+		# check units
+		lat_gd = self.unit_checker(lat_gd, u.radian)
+		lon    = self.unit_checker(lon, u.radian)
+
+		T_ecef_enu      = np.eye(3)
+		T_ecef_enu[0,0] = -np.sin(lon)
+		T_ecef_enu[0,1] = np.cos(lon)
+		T_ecef_enu[0,2] = 0.
+		T_ecef_enu[1,0] = -np.sin(lat_gd)*np.cos(lon)
+		T_ecef_enu[1,1] = -np.sin(lat_gd)*np.sin(lon)
+		T_ecef_enu[1,2] = np.cos(lat_gd)
+		T_ecef_enu[2,0] = np.cos(lon)*np.cos(lat_gd)
+		T_ecef_enu[2,1] = np.sin(lon)*np.cos(lat_gd)
+		T_ecef_enu[2,2] = np.sin(lat_gd)
+
+		return T_ecef_enu
