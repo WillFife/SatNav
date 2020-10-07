@@ -160,3 +160,37 @@ class WGS84():
 		T_ecef_enu[2,2] = np.sin(lat_gd)
 
 		return T_ecef_enu
+
+
+class OrbitalMath():
+	def __init__(self):
+		self.var = 'placeholder'
+
+
+	def E_newton(self, M, e, tol=10e-10, max_iter=20):
+		"""
+		Use newton-raphson method to solve for E
+		"""
+		if M < np.pi:
+			E_prev = M + e/2
+		else:
+			E_prev = M - e/2
+
+		for i in range(max_iter):
+			E_next = E_prev - (E_prev - e*np.sin(E_prev) - M)/(1 - e*np.cos(E_prev))
+			if E_next - E_prev < tol:
+				return E_next
+			
+			E_prev = E_next
+			if i==max_iter-1:
+				return E_next
+
+
+	def true_anomaly_from_E(self, E, e):
+		"""
+		Compute true anomaly from eccentric anomaly
+		"""
+		num = np.tan(E/2.) * np.sqrt(1 + e)
+		den = np.sqrt(1 - e)
+
+		return 2. * np.arctan2(num, den)
