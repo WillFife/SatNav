@@ -11,6 +11,16 @@ from datetime import datetime, timedelta
 from leapseconds import *
 
 
+def utcNow():
+    """
+    Return current UTC time as datetime
+
+    Outputs:
+        now - current UTC time as a datetime
+    """
+    return datetime.utcnow()
+
+
 def utc2gps(n):
     """
     Convert UTC time to GPS time expressed in GPS week
