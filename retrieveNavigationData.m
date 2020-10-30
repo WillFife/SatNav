@@ -92,10 +92,12 @@ if(nargin == 3)
   end
 end
 
+%disp(ephemHourOffset);
+
 % Get UTC time corresponding to gpsWeek and gpsSec.
 Tutc = datenum(utcTime, 'yyyy-mm-dd HH:MM:SS');
 disp(utcTime);
-disp(Tutc);
+%disp(Tutc);
 %disp(class(Tutc));
 tFps = double(Tutc + ephemHourOffset/24);
 %disp(class(tFps));

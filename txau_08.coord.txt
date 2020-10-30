@@ -1,0 +1,91 @@
+                              ***IGS 08***
+                AUSTIN RRP2 (TXAU),  TEXAS
+
+ Created on 31Aug2011 at 09:35:48.
+ _____________________________________________________________________________ 
+|                                                                             |
+|         Antenna Reference Point(ARP): AUSTIN RRP2 CORS ARP                  |
+|         --------------------------------------------------                  |
+|                             PID = DF4373                                    |
+|                                                                             |
+|                                                                             |
+| IGS08 POSITION (EPOCH 2005.0)                                               |
+| Computed in Aug 2011 using data through gpswk 1631.                         |
+|     X =   -743774.383 m     latitude    =  30 18 42.10617 N                 |
+|     Y =  -5460644.456 m     longitude   = 097 45 22.74411 W                 |
+|     Z =   3200347.675 m     ellipsoid height =  192.624   m                 |
+|                                                                             |
+| IGS08 VELOCITY                                                              |
+| Computed in Aug 2011 using data through gpswk 1631.                         |
+|     VX =  -0.0120 m/yr      northward =  -0.0036 m/yr                       |
+|     VY =  -0.0003 m/yr      eastward  =  -0.0118 m/yr                       |
+|     VZ =  -0.0031 m/yr      upward    =   0.0001 m/yr                       |
+|                                                                             |
+|                                                                             |
+| NAD_83 (2011) POSITION (EPOCH 2010.0)                                       |
+| Transformed from IGS08 (epoch 2005.0) position in Aug 2011.                 |
+|     X =   -743773.722 m     latitude    =  30 18 42.08819 N                 |
+|     Y =  -5460645.916 m     longitude   = 097 45 22.71225 W                 |
+|     Z =   3200347.828 m     ellipsoid height =  193.873   m                 |
+|                                                                             |
+| NAD_83 (2011) VELOCITY                                                      |
+| Transformed from IGS08 velocity in Aug 2011.                                |
+|     VX =   0.0020 m/yr      northward =   0.0001 m/yr                       |
+|     VY =   0.0005 m/yr      eastward  =   0.0019 m/yr                       |
+|     VZ =  -0.0003 m/yr      upward    =  -0.0008 m/yr                       |
+|_____________________________________________________________________________|
+|                                                                             |
+| L1 Phase Center of the current GPS antenna: AUSTIN RRP2 CORS L1 PC C        |
+| --------------------------------------------------------------------        |
+| The Zephyr GNSS Geodetic Model 2 antenna                                    |
+| (Antenna Code = TRM55971.00     NONE) was installed on 30Jan2008.           |
+|        The L2 phase center is 0.009 m below the L1 phase center.            |
+|                             PID = DJ9486                                    |
+|                                                                             |
+|                                                                             |
+| IGS08 POSITION (EPOCH 2005.0)                                               |
+| Computed in Aug 2011 using data through gpswk 1631.                         |
+|     X =   -743774.390 m     latitude    =  30 18 42.10621 N                 |
+|     Y =  -5460644.512 m     longitude   = 097 45 22.74412 W                 |
+|     Z =   3200347.710 m     ellipsoid height =  192.691   m                 |
+|                                                                             |
+| The IGS08 VELOCITY of the L1 PC is the same as that for the ARP.            |
+|                                                                             |
+|                                                                             |
+| NAD_83 (2011) POSITION (EPOCH 2010.0)                                       |
+| Transformed from IGS08 (epoch 2005.0) position in Aug 2011.                 |
+|     X =   -743773.730 m     latitude    =  30 18 42.08823 N                 |
+|     Y =  -5460645.972 m     longitude   = 097 45 22.71226 W                 |
+|     Z =   3200347.862 m     ellipsoid height =  193.940   m                 |
+|                                                                             |
+| The NAD_83 (2011) VELOCITY of the L1 PC is the same as that for the ARP.    |
+|_____________________________________________________________________________|
+
+
+ * Latitude, longitude and ellipsoid height are computed from their
+   corresponding cartesian coordinates using dimensions for the
+   GRS 80 ellipsoid: semi-major axis = 6,378,137.0 meters
+                          flattening = 1/298.257222101...
+
+
+ * WARNING: Mixing of antenna types can lead to errors of up to 10 cm.
+   in height unless antenna-phase-center variation and antenna-phase-center
+   offset are properly modeled.  See next comment.
+
+ * The coordinates shown on this page were computed using absolute antenna
+   calibrations.  CORS coordinates began using absolute antenna calibrations
+   beginning with IGS08 and NAD 83 (2011, MA11, PA11).  For additional
+   information on the derivation of these positions and velocities and
+   antenna calibrations consult:
+   http://geodesy.noaa.gov/CORS/coords.shtml
+   http://geodesy.noaa.gov/ANTCAL
+
+
+ * For more site specific information on the equipment history and
+   monumentation type consult:
+   ftp://geodesy.noaa.gov/cors/station_log/txau.log.txt
+   http://geodesy.noaa.gov/cgi-cors/corsage_2.prl?site=txau
+
+
+ * The ITRF00 & NAD83 position & velocity were revised in Aug. 2007.
+ * The position & velocity were revised in Aug 2011.

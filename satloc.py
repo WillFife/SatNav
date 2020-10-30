@@ -14,15 +14,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import astropy.units as u
 import sys
+import os
 
 # SatNav imports
-from mathUtils import MathUtils
+from mathUtils import *
 from datafile import DataFile
 from wgs84 import wgs84Constants, WGS84, OrbitalMath
 from time_conv import *
 
 
-DIR = 'data/lab2/'
+DIR = 'data/lab3/'
 
 
 def createNavDataCsv(gpsWeek, gpsSec, navdir=DIR[:-1]):
@@ -40,10 +41,11 @@ def createNavDataCsv(gpsWeek, gpsSec, navdir=DIR[:-1]):
     # Access matlab function and create csv
     try:
         eng = matlab.engine.start_matlab()
-        eng.retrieveNavigationData(gpsWeek, gpsSec, utc_str, 0, navdir)
+        eng.retrieveNavigationData(float(gpsWeek), float(gpsSec), utc_str, 0, navdir, nargout=0)
         eng.quit()
-    except ValueError:
-        print("\nFile created. Exception from Matlab return type handled.")
+    except Exception as e:
+        print("\nSomething went wrong with MATLAB... here is the exception")
+        print(e)
 
 
 def satloc(gpsWeek, gpsSec, svID, navdir=DIR, usefile=None, printSat=False):
@@ -65,13 +67,14 @@ def satloc(gpsWeek, gpsSec, svID, navdir=DIR, usefile=None, printSat=False):
 
     # Formulate filename and retrieve nav data
     navFile='filler'
-    if type(gpsSec) == float:
+    if type(gpsSec) == float and usefile == None:
         navFile = 'gpsW_SOW_{}_{:.4f}_navData.csv'.format(int(gpsWeek), gpsSec)
-    else:
+    elif type(gpsSec) != float and usefile == None:
         navFile = 'gpsW_SOW_{}_{}_navData.csv'.format(int(gpsWeek), gpsSec)
+    elif usefile != None:
+        navFile = usefile
+    
     navDF   = pd.read_csv(navdir + navFile)
-    if usefile != None:
-        navDF = pd.read_csv(navdir+usefile)
     sat     = navDF[navDF['SVID']==svID]
 
     # load in variables needed
@@ -152,10 +155,6 @@ def satloc(gpsWeek, gpsSec, svID, navdir=DIR, usefile=None, printSat=False):
     p_vx = r_k_dot*np.cos(argl_k) - r_k*argl_dot*np.sin(argl_k)
     p_vy = r_k_dot*np.sin(argl_k) + r_k*argl_dot*np.cos(argl_k)
 
-    print('p_x = ', p_x)
-    print('p_vx = ', p_vx)
-    print('lan_k = ', lan_k)
-
     # ECEF velocity
     Vx_ecef = -p_x*lan_k_dot*np.sin(lan_k) + \
               p_vx*np.cos(lan_k) - \
@@ -170,41 +169,141 @@ def satloc(gpsWeek, gpsSec, svID, navdir=DIR, usefile=None, printSat=False):
     Vz_ecef = p_vy*np.sin(i_k) + p_y*i_k_dot*np.cos(i_k)
 
     # place into arrays and return
-    R_ecef = np.array([x_ecef, y_ecef, z_ecef])
-    V_ecef = np.array([Vx_ecef, Vy_ecef, Vz_ecef])
+    R_ecef = np.array([x_ecef, y_ecef, z_ecef]).reshape((3,1)) * u.meter
+    V_ecef = np.array([Vx_ecef, Vy_ecef, Vz_ecef]).reshape((3,1)) * u.meter/u.second
 
     return R_ecef, V_ecef
 
 
-def main():
-    gpsWeek_t, gpsSec_t = (1653.0, 570957.338101566)
-    print('---TESTING SATLOC AGAINST GPSweek {}, GPSsec {}'.format(gpsWeek_t, gpsSec_t))
+def satelaz(r_sv_ecef, r_rx_ecef):
+    """
+    Compute satellite azimuth and elevation angle with respect to the
+    receiver in ECEF.
 
-    pos_t, vel_t = satloc(gpsWeek_t, gpsSec_t, 1, usefile='gpsW_SOW_1653_570957.3381_navData.csv')
+    Inputs:
+        r_sv_ecef (m) : 3x1 position vector of satellite in ECEF
+        r_rx_ecef (m) : 3x1 position vector of receiver in ECEF
+    Outputs:
+        az (rad) : azimuth angle 
+        el (rad) : elevation angle
+    """
 
-    print('\n Test position {}, \nTest velocity = {}'.format(pos_t.reshape((3,1)), vel_t.reshape((3,1))))
+    # Compute satellite wrt receiver in ECEF
+    r_sv_rx_ecef = r_sv_ecef - r_rx_ecef
+
+    # transform relative vector to ENU
+    wgs84       = WGS84()
+    lat, lon, h = wgs84.ecef_to_geodetic(r_rx_ecef)
+    T_ecef_enu  = wgs84.ecef_to_enu(lat, lon)
+    r_sv_rx_enu = np.matmul(T_ecef_enu, r_sv_rx_ecef)
+
+    # Compute azimuth and elevation
+    east  = r_sv_rx_enu[0,0]
+    north = r_sv_rx_enu[1,0]
+    up    = r_sv_rx_enu[2,0]
+
+    az = np.arctan2(east, north)
+    el = (0.5*np.pi * u.radian) - np.arccos( up / np.linalg.norm(r_sv_rx_enu) )
+
+    return az, el
+
+
+def satmap(navFile, r_rx_ecef, el_mask_deg, gpsWeek, gpsSecVec, navdir=DIR, plot_flag=False):
+    """
+    Generate plotting data for SV's above a particular
+    receiver position over a span of GPS seconds.
+
+    Inputs:
+        navFile          : csv navigation file
+        r_rx_ecef  (m)   : 3x1 receiver position in ECEF
+        el_mas_deg (deg) : elevation cutoff
+        gpsWeek          : Gps week number
+        gpsSecVec (s)    : Gps seconds array
+        plot_flag        : flag to create sky plot (plot if True)
+    Outputs:
+        svIds   : Unique SV ID numbers to be plotted
+        sv_data : Nt*Nsv by 4 array in the form
+                [svId, gpsSec, az, el
+                 svId, gpsSec, az, el
+                 .
+                 .
+                 svId, gpsSec, az, el]
+    """
+    # 32 SVIDs in each navfile
+    SVIDs = range(1,33)
+    ephem = pd.read_csv(navdir + navFile)
+    elrad = np.deg2rad(el_mask_deg) * u.radian
+
+    # sats_in_view will hold all svids in view at each GpsSec
+    svIds        = []
+    sv_data      = np.zeros(4)
+    for gpsSec in gpsSecVec:
+        for sv in SVIDs:
+            if np.any(ephem['SVID'] == sv):
+                # grab sat ecef position 
+                R_sat, V_sat = satloc(gpsWeek, gpsSec, sv, usefile=navFile)
+                
+                # grab azimuth, elevation from receiver
+                az, el = satelaz(R_sat, r_rx_ecef)
+
+                # check if equal to or above elevation threshold
+                if el >= elrad:
+                    if sv not in svIds:
+                        svIds.append(sv)
+                    
+                    data    = [sv, gpsSec, el.value, az.value]
+                    sv_data = np.vstack((sv_data, data))
     
-    datetimeformat = "%Y-%m-%d %H:%M:%S"
-    utc = datetime.strptime("2013-09-01 12:00:00",datetimeformat)
-    gpsWeek, gpsSec = utc2gps(utc)
-    print('\n---TESTING SATLOC AGAINST GPSweek {}, GPSsec {}'.format(gpsWeek, gpsSec))
+    # delete first row, it was just used as a initializer
+    sv_data = np.delete(sv_data, 0, 0)
 
-    pos_2, vel_2 = satloc(gpsWeek, gpsSec, 2, usefile='gpsW_SOW_1756_43165_navData.csv')
-    pos_5, vel_5 = satloc(gpsWeek, gpsSec, 5, usefile='gpsW_SOW_1756_43165_navData.csv')
+    if plot_flag:
+        # import matlab runner
+        sys.path.insert(1, '/Applications/MATLAB_R2020a.app')
+        import matlab.engine
 
-    print('\n --PRN 2-- Test position {}, \nTest velocity = {}'.format(pos_2.reshape((3,1)), vel_2.reshape((3,1))))
-    print('\n --PRN 5-- Test position {}, \nTest velocity = {}'.format(pos_5.reshape((3,1)), vel_5.reshape((3,1))))
+        try:
+            eng     = matlab.engine.start_matlab()
+            satdata = ndarray2matlab(sv_data)
+            eng.plotsat(satdata, float(gpsWeek), float(elrad), nargout=0)
+            eng.quit()
 
-    utc = datetime.strptime("2013-09-01 12:00:01",datetimeformat)
-    gpsWeek, gpsSec = utc2gps(utc)
-    print('\n---TESTING SATLOC AGAINST GPSweek {}, GPSsec {}'.format(gpsWeek, gpsSec))
+        except Exception as e:
+            print("\nSomething went wrong with MATLAB... here is the exception\n")
+            print(e)
 
-    pos_2t, vel_2t = satloc(gpsWeek, gpsSec, 2, usefile='gpsW_SOW_1756_43166_navData.csv')
-    pos_5t, vel_5t = satloc(gpsWeek, gpsSec, 5, usefile='gpsW_SOW_1756_43166_navData.csv')
+    return svIds, sv_data
 
-    print('\n --PRN 2-- Test position {}, \nTest velocity = {}'.format(pos_2t.reshape((3,1)), vel_2t.reshape((3,1))))
-    print('\n --PRN 5-- Test position {}, \nTest velocity = {}'.format(pos_5t.reshape((3,1)), vel_5t.reshape((3,1))))
 
+def channel2navsol(gpsWeek, gpsSec, svID, sec_n=None, rx_ecef=None, createf=False):
+    # first, get the data from the matlab script
+    if createf:
+        createNavDataCsv(gpsWeek, gpsSec)
+
+    # grab that file to get position and then delete later
+    usesec = gpsSec
+    if sec_n != None:
+        usesec = sec_n
+
+    navFile='filler'
+    if type(gpsSec) == float:
+        navFile = 'gpsW_SOW_{}_{:.4f}_navData.csv'.format(int(gpsWeek), usesec)
+    else:
+        navFile = 'gpsW_SOW_{}_{}_navData.csv'.format(int(gpsWeek), usesec)
+
+    # get position of SV
+    r_sv_ecef, v_ecef = satloc(gpsWeek, gpsSec, svID, usefile=navFile)
+
+    if rx_ecef != None:
+        az, el = satelaz(r_sv_ecef, rx_ecef)
+
+        return r_sv_ecef, el
+    
+    return r_sv_ecef
+    
+
+def main():
+    print('Using satloc functionality...')
 
 if __name__ == "__main__":
     main()

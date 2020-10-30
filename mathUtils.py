@@ -7,6 +7,24 @@ Math utilities for efficiency and functionality
 # import dependencies
 import astropy.units as u
 import numpy as np
+import matlab.engine
+
+
+def npfloat2float(element):
+    return element.item()
+
+
+def ndarray2matlab(arr):
+    #eng1 = matlab.engine.start_matlab()
+    n_rows = arr.shape[0]
+    n_cols = arr.shape[1]
+    n_elem = arr.size
+    
+    flat      = arr.flatten('F')
+    flat_list = [float(i) for i in flat]
+
+    mat = matlab.double(flat_list, size=(n_rows, n_cols))
+    return mat
 
 
 class MathUtils:

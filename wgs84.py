@@ -121,7 +121,7 @@ class WGS84():
 			R_N     = self.R_N(lat)
 			numer   = z + R_N*self.consts.E_ECC_SQ*np.sin(lat)
 			new_lat = np.arctan2(numer, rho)
-			if abs(new_lat - lat) <= tol:
+			if abs(new_lat.value - lat.value) <= tol:
 				lat = new_lat
 				h   = R_N
 				return lat, lon, h
@@ -145,8 +145,8 @@ class WGS84():
 			Astropy Quantity T_ecef_enu: 3x3 Rotation matrix from ECEF to ENU
 		"""
 		# check units
-		lat_gd = self.unit_checker(lat_gd, u.radian)
-		lon    = self.unit_checker(lon, u.radian)
+		lat_gd = lat_gd.to(u.radian)
+		lon    = lon.to(u.radian)
 
 		T_ecef_enu      = np.eye(3)
 		T_ecef_enu[0,0] = -np.sin(lon)
